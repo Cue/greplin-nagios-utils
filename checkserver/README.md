@@ -1,8 +1,8 @@
 greplin-nagios-utils: checkserver
 =================================
 
-Simple server that runs checks.
--------------------------------
+Simple server that runs checks without Python startup overhead
+--------------------------------------------------------------
 
 checkserver loads checks located at
 

@@ -6,7 +6,7 @@ Library that makes writing Nagios checks really easy.
 
 ### Sample
 
-The sample assumes you're also using [checkserver](../checkserver)
+The sample assumes you're also using [checkserver](/Greplin/greplin-nagios-utils/tree/master/checkserver)
 
 	from greplin.nagios import parseArgs, parseJsonFile, statValue, ResponseBuilder
 
