@@ -4,6 +4,12 @@ greplin-nagios-utils: checkserver
 Simple server that runs checks without Python startup overhead
 --------------------------------------------------------------
 
+### Dependencies
+
+[Tornado](/facebook/tornado)
+
+### Usage
+
 checkserver loads checks located at
 
     /usr/lib/nagios/check_<name>.py
