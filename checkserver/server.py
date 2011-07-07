@@ -49,6 +49,8 @@ class CheckHandler(tornado.web.RequestHandler):
       filename = '/usr/lib/nagios/plugins/check_%s.py' % name
       if os.path.exists(filename):
         CHECK_CACHE[name] = imp.load_source('check_%s' % name, filename)
+      else:
+        raise Exception('No such file: %s' % filename)
 
     try:
       sys.stdout = self
