@@ -238,17 +238,21 @@ class ResponseBuilder(object):
     return self
 
 
-  def warnIf(self, condition):
+  def warnIf(self, condition, message=None):
     """Warn on a given condition."""
     if condition:
       self._status = max(self._status, WARNING)
+      if message is not None:
+        self.message(message)
     return self
 
 
-  def critIf(self, condition):
+  def critIf(self, condition, message=None):
     """Mark state as critical on the given condition."""
     if condition:
       self._status = max(self._status, CRITICAL)
+      if message is not None:
+        self.message(message)
     return self
 
 
