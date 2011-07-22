@@ -27,3 +27,4 @@ and patches are very much appreciated!
 ### Authors:
 
 [Greplin, Inc.](http://www.greplin.com)
+Jon Rowland
