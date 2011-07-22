@@ -14,7 +14,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-RESULT=`curl -s http://localhost:8111/check/$1?arg=$2`
+# First argument is the check name.
+CHECK=$1
+shift
+
+# Build the rest of the arguments into the arg string for the URL.
+CHECK_ARGS='arg='
+if [ "$#" -gt "0" ]
+then
+  CHECK_ARGS="arg="$1
+  shift
+  for ARG in "$@"
+  do
+    CHECK_ARGS=${CHECK_ARGS}"&arg="${ARG}
+  done
+fi
+
+RESULT=`curl -s http://localhost:8111/check/${CHECK}?${CHECK_ARGS}`
 echo $RESULT
 
 IFS='|:'
