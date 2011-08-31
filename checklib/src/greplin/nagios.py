@@ -250,6 +250,12 @@ class ResponseBuilder(object):
       self.crit(message)
 
 
+  def unknownIf(self, condition, message=None):
+    """Mark state as unknown on the given condition."""
+    if condition:
+      self.unknown(message)
+
+
   def warn(self, message=None):
     """Mark state as warning."""
     self._status = max(self._status, WARNING)
@@ -261,6 +267,14 @@ class ResponseBuilder(object):
   def crit(self, message=None):
     """Mark state as critical."""
     self._status = max(self._status, CRITICAL)
+    if message is not None:
+      self.message(message)
+    return self
+
+
+  def unknown(self, message=None):
+    """Mark state as unknown."""
+    self._status = max(self._status, UNKNOWN)
     if message is not None:
       self.message(message)
     return self
