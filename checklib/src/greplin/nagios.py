@@ -204,6 +204,9 @@ class ResponseBuilder(object):
   def __init__(self):
     self._stats = []
     self._status = OK
+    self._critMessages = []
+    self._warnMessages = []
+    self._unknownMessages = []
     self._messages = []
 
 
@@ -263,7 +266,7 @@ class ResponseBuilder(object):
     """Mark state as warning."""
     self._status = max(self._status, WARNING)
     if message is not None:
-      self.message(message)
+      self._warnMessages.append(message)
     return self
 
 
@@ -271,7 +274,7 @@ class ResponseBuilder(object):
     """Mark state as critical."""
     self._status = max(self._status, CRITICAL)
     if message is not None:
-      self.message(message)
+      self._critMessages.append(message)
     return self
 
 
@@ -279,7 +282,7 @@ class ResponseBuilder(object):
     """Mark state as unknown."""
     self._status = max(self._status, UNKNOWN)
     if message is not None:
-      self.message(message)
+      self._unknownMessages.append(message)
     return self
 
 
@@ -298,8 +301,9 @@ class ResponseBuilder(object):
   def finish(self):
     """Builds the response, prints it, and exits."""
     output = STATUS_NAME[self._status]
-    if self._messages:
-      output += ': ' + (', '.join(self._messages))
+    messages = self._unknownMessages + self._critMessages + self._warnMessages + self._messages
+    if messages:
+      output += ': ' + (', '.join(messages))
     if self._stats:
       output += '|' + self.build()
 
