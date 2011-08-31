@@ -242,18 +242,21 @@ class ResponseBuilder(object):
     """Warn on a given condition."""
     if condition:
       self.warn(message)
+    return self
 
 
   def critIf(self, condition, message=None):
     """Mark state as critical on the given condition."""
     if condition:
       self.crit(message)
+    return self
 
 
   def unknownIf(self, condition, message=None):
     """Mark state as unknown on the given condition."""
     if condition:
       self.unknown(message)
+    return self
 
 
   def warn(self, message=None):
