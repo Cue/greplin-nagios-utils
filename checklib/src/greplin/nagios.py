@@ -205,10 +205,7 @@ class ResponseBuilder(object):
   def __init__(self):
     self._stats = []
     self._status = OK
-    self._critMessages = []
-    self._warnMessages = []
-    self._unknownMessages = []
-    self._messages = []
+    self._messages = [[], [], [], []]
 
 
   def addValue(self, name, value):
@@ -236,8 +233,9 @@ class ResponseBuilder(object):
     """Adds an alert rule and associated performance data."""
     status = rule.check(value)
     if status:
-      self._status = max(self._status, rule.check(value))
-      self._messages.append(rule.message(name, value))
+      ruleStatus = rule.check(value)
+      self._status = max(self._status, ruleStatus)
+      self._messages[ruleStatus] = rule.message(name, value)
     self._stats.append(rule.format(name, value))
     return self
 
@@ -267,7 +265,7 @@ class ResponseBuilder(object):
     """Mark state as warning."""
     self._status = max(self._status, WARNING)
     if message is not None:
-      self._warnMessages.append(message)
+      self._messages[WARNING].append(message)
     return self
 
 
@@ -275,7 +273,7 @@ class ResponseBuilder(object):
     """Mark state as critical."""
     self._status = max(self._status, CRITICAL)
     if message is not None:
-      self._critMessages.append(message)
+      self._messages[CRITICAL].append(message)
     return self
 
 
@@ -283,14 +281,14 @@ class ResponseBuilder(object):
     """Mark state as unknown."""
     self._status = max(self._status, UNKNOWN)
     if message is not None:
-      self._unknownMessages.append(message)
+      self._messages[UNKNOWN].append(message)
     return self
 
 
   def message(self, message):
     """Set the output message."""
     if message:
-      self._messages.append(message)
+      self._messages[OK].append(message)
     return self
 
 
@@ -302,7 +300,7 @@ class ResponseBuilder(object):
   def finish(self):
     """Builds the response, prints it, and exits."""
     output = STATUS_NAME[self._status]
-    messages = self._unknownMessages + self._critMessages + self._warnMessages + self._messages
+    messages = self._messages[UNKNOWN] + self._messages[CRITICAL] + self._messages[WARNING] + self._messages[OK]
     if messages:
       output += ': ' + (', '.join(messages))
     if self._stats:
