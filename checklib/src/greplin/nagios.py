@@ -235,7 +235,7 @@ class ResponseBuilder(object):
     if status:
       ruleStatus = rule.check(value)
       self._status = max(self._status, ruleStatus)
-      self._messages[ruleStatus] = rule.message(name, value)
+      self._messages[ruleStatus].append(rule.message(name, value))
     self._stats.append(rule.format(name, value))
     return self
 
