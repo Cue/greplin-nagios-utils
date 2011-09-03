@@ -150,16 +150,15 @@ class Minimum(Rule):
 
   def format(self, name, value):
     """Formats as perf data."""
-    return "'%s'=%d%s;%d;%d;;;" % (name, value, self.unit, self.warnLevel, self.critLevel)
+    return "'%s'=%g%s;%g;%g;;;" % (name, value, self.unit, self.warnLevel, self.critLevel)
 
 
   def message(self, name, value):
     """Create an error message."""
-    fmt = '%f' if (type(value) == float or type(self.warnLevel) == float or type(self.critLevel) == float) else '%d'''
     if self.check(value) == CRITICAL:
-      return ('%s: ' + fmt + '%s < ' + fmt + '%s') % (name, value, self.unit, self.critLevel, self.unit)
+      return ('%s: %g%s < %g%s') % (name, value, self.unit, self.critLevel, self.unit)
     elif self.check(value) == WARNING:
-      return ('%s: ' + fmt + '%s < ' + fmt + '%s') % (name, value, self.unit, self.warnLevel, self.unit)
+      return ('%s: %g%s < %g%s') % (name, value, self.unit, self.warnLevel, self.unit)
 
 
 
@@ -186,15 +185,15 @@ class Maximum(Rule):
 
   def format(self, name, value):
     """Formats as perf data."""
-    return "'%s'=%d%s;%d;%d;;;" % (name, value, self.unit, self.warnLevel, self.critLevel)
+    return "'%s'=%g%s;%g;%g;;;" % (name, value, self.unit, self.warnLevel, self.critLevel)
 
 
   def message(self, name, value):
     """Create an error message."""
     if self.check(value) == CRITICAL:
-      return '%s: %d%s > %d%s' % (name, value, self.unit, self.critLevel, self.unit)
+      return '%s: %g%s > %g%s' % (name, value, self.unit, self.critLevel, self.unit)
     elif self.check(value) == WARNING:
-      return '%s: %d%s > %d%s' % (name, value, self.unit, self.warnLevel, self.unit)
+      return '%s: %g%s > %g%s' % (name, value, self.unit, self.warnLevel, self.unit)
 
 
 
