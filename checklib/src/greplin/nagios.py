@@ -59,7 +59,7 @@ def parseJson(text):
     return json.loads(text)
 
   except ValueError, e:
-    print('CRIT: %s' % e)
+    print('CRIT: %s (text was %r)' % (e, text))
     exit(CRITICAL)
 
 
