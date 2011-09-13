@@ -185,7 +185,7 @@ class Maximum(Rule):
 
   def format(self, name, value):
     """Formats as perf data."""
-    return "'%s'=%g%s;%g;%g;;;" % (name, value, self.unit, self.warnLevel, self.critLevel)
+    return "'%s'=%.9g%s;%.9g;%.9g;;;" % (name, value, self.unit, self.warnLevel, self.critLevel)
 
 
   def message(self, name, value):
