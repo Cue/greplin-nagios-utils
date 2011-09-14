@@ -191,9 +191,9 @@ class Maximum(Rule):
   def message(self, name, value):
     """Create an error message."""
     if self.check(value) == CRITICAL:
-      return '%s: %g%s > %g%s' % (name, value, self.unit, self.critLevel, self.unit)
+      return '%s: %.9g%s > %.9g%s' % (name, value, self.unit, self.critLevel, self.unit)
     elif self.check(value) == WARNING:
-      return '%s: %g%s > %g%s' % (name, value, self.unit, self.warnLevel, self.unit)
+      return '%s: %.9g%s > %.9g%s' % (name, value, self.unit, self.warnLevel, self.unit)
 
 
 
