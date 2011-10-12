@@ -137,7 +137,7 @@ class Host(NagObj):
   def addGroup(self, name):
     """Mark this host as a member of the given group, creating the group if needed
     """
-    hg = HOSTGROUPS.get_or_create(name)
+    hg = HOSTGROUPS.getOrCreate(name)
     self.hostgroups.add(hg)
 
 
