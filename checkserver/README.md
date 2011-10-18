@@ -12,7 +12,7 @@ Simple server that runs checks without Python startup overhead
 
 checkserver loads checks located at
 
-    /usr/lib/nagios/check_<name>.py
+    /usr/lib/nagios/plugins/check_<name>.py
 
 when you visit
 
