@@ -30,6 +30,18 @@ define host {
 """
 
 
+SERVICE_TMPL = """
+define service {
+  use                  %(use)s
+  service              %(name)s
+  service_description  %(description)s
+  check_command        %(check_command)s
+  check_interval       %(check_interval)d
+}
+
+"""
+
+
 
 class NagObj(object):
   """base nagios object
@@ -100,7 +112,14 @@ class HostGroup(NagObj):
 
   def __init__(self, name):
     NagObj.__init__(self, name)
+    self.members = []
 
+
+  def add(self, member):
+    """Add a host to this group
+    """
+    self.members.append(member)
+    
 
   def __repr__(self):
     return "define hostgroup {\n  hostgroup_name %s \n}" % self.name
@@ -139,6 +158,7 @@ class Host(NagObj):
     """
     hg = HOSTGROUPS.getOrCreate(name)
     self.hostgroups.add(hg)
+    hg.add(self)
 
 
   def __repr__(self):
@@ -159,9 +179,40 @@ class HostBag(NagBag):
 HOSTS = HostBag()
 
 
+
+class Service(NagObj):
+  """Represent a nagios service
+  """
+
+
+  def __init__(self, name):
+    NagObj.__init__(self, name)
+    self.use = 'generic-service'
+    self.description = None
+    self.hostgroup_name = None
+    self.check_command = None
+    self.check_interval = 1
+
+
+  def __repr__(self):
+    return SERVICE_TMPL % self.__dict__
+
+
+
+class ServiceBag(NagBag):
+  """The set of services
+  """
+
+  def __init__(self):
+    NagBag.__init__(self, 'service', Service)
+
+
+SERVICES = ServiceBag()
+
+
 def generate(out=sys.stdout):
   """Print nagios configuration fragments to the given output stream
   """
   HOSTGROUPS.generate(out)
   HOSTS.generate(out)
-
+  SERVICES.generate(out)
