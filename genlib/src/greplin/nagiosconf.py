@@ -19,37 +19,28 @@ import sys
 
 
 
-HOST_TMPL = """
-define host {
-  use        %(use)s
-  host_name  %(name)s
-  hostgroups %(hostgroups_str)s
-  alias      %(alias)s
-  address    %(address)s
-}
-"""
-
-
-SERVICE_TMPL = """
-define service {
-  use                  %(use)s
-  service_description  %(description)s
-  check_command        %(check_command)s
-  check_interval       %(check_interval)d
-}
-
-"""
-
-
-
 class NagObj(object):
   """base nagios object
   """
 
-
   def __init__(self, name):
     object.__init__(self)
     self.name = name
+    self.props = {}
+    self.meta = {}
+
+
+  def __repr__(self):
+    assert self.typeName != None
+    if not self.props:
+      return "# skipped define for empty %s %s\n" % (self.typeName, self.name)
+
+    ret = ["define %s {" % self.typeName ]
+    mlen = max([ len(k) for k in self.props.keys()]) + 2
+    for k, v in self.props.items():
+      ret.append("  %s%s%s" % (k, ' ' * (mlen-len(k)), v))
+    ret.append("}")
+    return "\n".join(ret)
 
 
 
@@ -58,9 +49,8 @@ class NagBag(object):
   """
 
 
-  def __init__(self, typename, klass):
+  def __init__(self, klass):
     object.__init__(self)
-    self.typename = typename
     self.klass = klass
     self.bag = {}
 
@@ -97,7 +87,6 @@ class NagBag(object):
   def generate(self, out):
     """Write config fragemts for this bag to the given output stream
     """
-    out.write("# %s definitions ----------------\n" % self.typename)
     for item in self.bag.values():
       out.write('%s\n' % repr(item))
 
@@ -107,6 +96,7 @@ class NagBag(object):
 class HostGroup(NagObj):
   """Represent a nagios hostgroup
   """
+  typeName = 'hostGroup'
 
 
   def __init__(self, name):
@@ -121,7 +111,8 @@ class HostGroup(NagObj):
     
 
   def __repr__(self):
-    return "define hostgroup {\n  hostgroup_name %s \n}" % self.name
+    self.props['hostgroup_name'] = self.name
+    return NagObj.__repr__(self)
 
 
 
@@ -130,7 +121,7 @@ class HostGroupBag(NagBag):
   """
 
   def __init__(self):
-    NagBag.__init__(self, 'hostgroup', HostGroup)
+    NagBag.__init__(self, HostGroup)
 
 
 
@@ -142,14 +133,12 @@ class Host(NagObj):
   """Represent a nagios host
   """
 
+  typeName = 'host'
+
 
   def __init__(self, name):
     NagObj.__init__(self, name)
-    self.use = 'generic-host'
-    self.alias = None
-    self.address = None
     self.hostgroups = set()
-    self.hostgroups_str = None
 
 
   def addGroup(self, name):
@@ -161,8 +150,9 @@ class Host(NagObj):
 
 
   def __repr__(self):
-    self.hostgroups_str = ','.join([hg.name for hg in self.hostgroups])
-    return HOST_TMPL % self.__dict__
+    self.props['host_name'] = self.name
+    self.props['hostgroups'] = ','.join([hg.name for hg in self.hostgroups])
+    return NagObj.__repr__(self)
 
 
 
@@ -171,7 +161,7 @@ class HostBag(NagBag):
   """
 
   def __init__(self):
-    NagBag.__init__(self, 'host', Host)
+    NagBag.__init__(self, Host)
 
 
 
@@ -182,19 +172,7 @@ HOSTS = HostBag()
 class Service(NagObj):
   """Represent a nagios service
   """
-
-
-  def __init__(self, name):
-    NagObj.__init__(self, name)
-    self.use = 'generic-service'
-    self.description = None
-    self.hostgroup_name = None
-    self.check_command = None
-    self.check_interval = 1
-
-
-  def __repr__(self):
-    return SERVICE_TMPL % self.__dict__
+  typeName = 'service'
 
 
 
@@ -203,7 +181,7 @@ class ServiceBag(NagBag):
   """
 
   def __init__(self):
-    NagBag.__init__(self, 'service', Service)
+    NagBag.__init__(self, Service)
 
 
 SERVICES = ServiceBag()
