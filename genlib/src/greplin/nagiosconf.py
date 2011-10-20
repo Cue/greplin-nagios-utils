@@ -87,8 +87,8 @@ class NagBag(object):
   def generate(self, out):
     """Write config fragemts for this bag to the given output stream
     """
-    for item in self.bag.values():
-      out.write('%s\n' % repr(item))
+    for item in sorted(self.bag.items()):
+      out.write('%s\n' % repr(item[1]))
 
 
 
@@ -96,7 +96,7 @@ class NagBag(object):
 class HostGroup(NagObj):
   """Represent a nagios hostgroup
   """
-  typeName = 'hostGroup'
+  typeName = 'hostgroup'
 
 
   def __init__(self, name):
@@ -151,7 +151,7 @@ class Host(NagObj):
 
   def __repr__(self):
     self.props['host_name'] = self.name
-    self.props['hostgroups'] = ','.join([hg.name for hg in self.hostgroups])
+    self.props['hostgroups'] = ','.join(sorted([hg.name for hg in self.hostgroups]))
     return NagObj.__repr__(self)
 
 
