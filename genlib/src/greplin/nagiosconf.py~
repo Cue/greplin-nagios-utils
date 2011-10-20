@@ -33,6 +33,7 @@ define host {
 SERVICE_TMPL = """
 define service {
   use                  %(use)s
+  service              %(name)s
   service_description  %(description)s
   check_command        %(check_command)s
   check_interval       %(check_interval)d
