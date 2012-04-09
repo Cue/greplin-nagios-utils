@@ -26,9 +26,23 @@ import sys
 
 
 tornado.options.define(name="debug", default=False, help="run in debug mode", type=bool)
+tornado.options.define(name="checkdir", default="/usr/lib/nagios/plugins",
+                       help="directory with check scripts", type=str)
 
 
 CHECK_CACHE = {}
+
+
+def checker(name):
+  """Get a checker function. Caches imports."""
+  if name not in CHECK_CACHE:
+    filename = os.path.join(os.path.dirname(__file__), tornado.options.options.checkdir, 'check_%s.py' % name)
+    if os.path.exists(filename):
+      CHECK_CACHE[name] = imp.load_source('check_%s' % name, filename)
+    else:
+      raise Exception('No such file: %s' % filename)
+
+  return CHECK_CACHE[name].check
 
 
 
@@ -45,13 +59,7 @@ class CheckHandler(tornado.web.RequestHandler):
   """Handles running a check."""
 
   def get(self, name): # pylint: disable=W0221
-    if name not in CHECK_CACHE:
-      filename = '/usr/lib/nagios/plugins/check_%s.py' % name
-      if os.path.exists(filename):
-        CHECK_CACHE[name] = imp.load_source('check_%s' % name, filename)
-      else:
-        raise Exception('No such file: %s' % filename)
-
+    check = checker(name)
     try:
       sys.stdout = self
       sys.stderr = self
@@ -59,7 +67,7 @@ class CheckHandler(tornado.web.RequestHandler):
       args = self.get_arguments('arg')
       args.insert(0, 'check_%s' % name)
 
-      CHECK_CACHE[name].check(args)
+      check(args)
     except SystemExit:
       pass
     finally:
