@@ -36,7 +36,22 @@ OPTIONS = None
 STATS = defaultdict(int)
 
 
-def checker(name, outStream):
+def runChecker(fun, args):
+  """Run a checker function with the given args. Return a string."""
+  outStream = StringIO()
+  try:
+    sys.stdout = outStream
+    sys.stderr = outStream
+    fun(args)
+  except SystemExit:
+    pass
+  finally:
+    sys.stdout = sys.__stdout__
+    sys.stderr = sys.__stderr__
+  return outStream.getvalue()
+
+
+def checker(name):
   """Get a checker function. Caches imports. Writes output to outfile."""
   if name not in CHECK_CACHE:
     filename = os.path.join(os.path.dirname(__file__), OPTIONS.checkdir, 'check_%s.py' % name)
@@ -45,21 +60,7 @@ def checker(name, outStream):
     else:
       raise KeyError('No such file: %s' % filename)
 
-  fun = CHECK_CACHE[name].check
-
-  def wrapper(args):
-    """Wrapper function."""
-    try:
-      sys.stdout = outStream
-      sys.stderr = outStream
-      fun(args)
-    except SystemExit:
-      pass
-    finally:
-      sys.stdout = sys.__stdout__
-      sys.stderr = sys.__stderr__
-
-  return wrapper
+  return lambda args: runChecker(CHECK_CACHE[name].check, args)
 
 
 @APP.route('/')
@@ -81,18 +82,21 @@ def update(name):
 @APP.route('/check/<name>')
 def check(name):
   """Run a check."""
-  outStream = StringIO()
   try:
-    checkFun = checker(name, outStream)
+    checkFun = checker(name)
   except KeyError:
     abort(404)
 
   args = request.args.getlist('arg')
   args.insert(0, 'check_%s' % name)
 
-  tpool.execute(checkFun, args)
+  output = tpool.execute(checkFun, args)
+  if not output.strip(): # If thread pool is wack, run in main thread. Also, pylint: disable=E1103
+    logging.warn('Thread pool hiccup. Running %s in main thread.', name)
+    output = checkFun(args)
+  resp = make_response(output)
   STATS[name] += 1
-  resp = make_response(outStream.getvalue())
+
   resp.headers['Content-Type'] = 'text/plain; charset=UTF-8'
   return resp
 
