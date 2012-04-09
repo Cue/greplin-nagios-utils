@@ -15,7 +15,7 @@
 
 """Server that runs Python checks."""
 
-from eventlet import wsgi
+from eventlet import wsgi, tpool
 import eventlet
 from flask import Flask, request, make_response, jsonify, abort
 APP = Flask(__name__)
@@ -36,8 +36,8 @@ OPTIONS = None
 STATS = defaultdict(int)
 
 
-def checker(name):
-  """Get a checker function. Caches imports."""
+def checker(name, outStream):
+  """Get a checker function. Caches imports. Writes output to outfile."""
   if name not in CHECK_CACHE:
     filename = os.path.join(os.path.dirname(__file__), OPTIONS.checkdir, 'check_%s.py' % name)
     if os.path.exists(filename):
@@ -45,7 +45,21 @@ def checker(name):
     else:
       raise KeyError('No such file: %s' % filename)
 
-  return CHECK_CACHE[name].check
+  fun = CHECK_CACHE[name].check
+
+  def wrapper(args):
+    """Wrapper function."""
+    try:
+      sys.stdout = outStream
+      sys.stderr = outStream
+      fun(args)
+    except SystemExit:
+      pass
+    finally:
+      sys.stdout = sys.__stdout__
+      sys.stderr = sys.__stderr__
+
+  return wrapper
 
 
 @APP.route('/')
@@ -67,24 +81,17 @@ def update(name):
 @APP.route('/check/<name>')
 def check(name):
   """Run a check."""
+  outStream = StringIO()
   try:
-    checkFun = checker(name)
+    checkFun = checker(name, outStream)
   except KeyError:
     abort(404)
 
-  outStream = StringIO()
   args = request.args.getlist('arg')
   args.insert(0, 'check_%s' % name)
-  try:
-    sys.stdout = outStream
-    sys.stderr = outStream
-    checkFun(args)
-  except SystemExit:
-    pass
-  finally:
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
-    STATS[name] += 1
+
+  tpool.execute(checkFun, args)
+  STATS[name] += 1
   resp = make_response(outStream.getvalue())
   resp.headers['Content-Type'] = 'text/plain; charset=UTF-8'
   return resp
