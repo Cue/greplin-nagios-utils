@@ -36,7 +36,7 @@ OPTIONS = None
 STATS = defaultdict(int)
 
 
-def runChecker(fun, args):
+def runChecker(fun, name, args):
   """Run a checker function with the given args. Return a string."""
   outStream = StringIO()
   try:
@@ -45,6 +45,9 @@ def runChecker(fun, args):
     fun(args)
   except SystemExit:
     pass
+  except Exception:
+    logging.exception('Checker %s failed', name)
+    return ''
   finally:
     sys.stdout = sys.__stdout__
     sys.stderr = sys.__stderr__
@@ -60,7 +63,7 @@ def checker(name):
     else:
       raise KeyError('No such file: %s' % filename)
 
-  return lambda args: runChecker(CHECK_CACHE[name].check, args)
+  return lambda args: runChecker(CHECK_CACHE[name].check, name, args)
 
 
 @APP.route('/')
