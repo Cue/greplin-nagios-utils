@@ -15,80 +15,105 @@
 
 """Server that runs Python checks."""
 
-import tornado.httpserver
-import tornado.ioloop
-import tornado.options
-import tornado.web
+from eventlet import wsgi, tpool
+import eventlet
+from flask import Flask, request, make_response, jsonify, abort
+APP = Flask(__name__)
 
 import imp
 import os
 import sys
+import logging
+from optparse import OptionParser
+from collections import defaultdict
+from cStringIO import StringIO
 
-
-tornado.options.define(name="debug", default=False, help="run in debug mode", type=bool)
-tornado.options.define(name="checkdir", default="/usr/lib/nagios/plugins",
-                       help="directory with check scripts", type=str)
-
-
+# Cache mapping check names to checker modules
 CHECK_CACHE = {}
+# Argparser options
+OPTIONS = None
+# Stats on how many times each checker has run
+STATS = defaultdict(int)
 
 
-def checker(name):
-  """Get a checker function. Caches imports."""
+def checker(name, outStream):
+  """Get a checker function. Caches imports. Writes output to outfile."""
   if name not in CHECK_CACHE:
-    filename = os.path.join(os.path.dirname(__file__), tornado.options.options.checkdir, 'check_%s.py' % name)
+    filename = os.path.join(os.path.dirname(__file__), OPTIONS.checkdir, 'check_%s.py' % name)
     if os.path.exists(filename):
       CHECK_CACHE[name] = imp.load_source('check_%s' % name, filename)
     else:
-      raise Exception('No such file: %s' % filename)
+      raise KeyError('No such file: %s' % filename)
 
-  return CHECK_CACHE[name].check
+  fun = CHECK_CACHE[name].check
 
-
-
-class UpdateCheckHandler(tornado.web.RequestHandler):
-  """Removes the cached version of a check."""
-
-  def get(self, name): # pylint: disable=W0221
-    if name in CHECK_CACHE:
-      del CHECK_CACHE[name]
-
-
-
-class CheckHandler(tornado.web.RequestHandler):
-  """Handles running a check."""
-
-  def get(self, name): # pylint: disable=W0221
-    check = checker(name)
+  def wrapper(args):
+    """Wrapper function."""
     try:
-      sys.stdout = self
-      sys.stderr = self
-
-      args = self.get_arguments('arg')
-      args.insert(0, 'check_%s' % name)
-
-      check(args)
+      sys.stdout = outStream
+      sys.stderr = outStream
+      fun(args)
     except SystemExit:
       pass
     finally:
       sys.stdout = sys.__stdout__
       sys.stderr = sys.__stderr__
 
+  return wrapper
+
+
+@APP.route('/')
+def root():
+  """Root request handler."""
+  return jsonify(STATS)
+
+
+@APP.route('/update/<name>')
+def update(name):
+  """Reload a check module."""
+  if name in CHECK_CACHE:
+    del CHECK_CACHE[name]
+    return "Reloaded"
+  else:
+    abort(404)
+
+
+@APP.route('/check/<name>')
+def check(name):
+  """Run a check."""
+  outStream = StringIO()
+  try:
+    checkFun = checker(name, outStream)
+  except KeyError:
+    abort(404)
+
+  args = request.args.getlist('arg')
+  args.insert(0, 'check_%s' % name)
+
+  tpool.execute(checkFun, args)
+  STATS[name] += 1
+  resp = make_response(outStream.getvalue())
+  resp.headers['Content-Type'] = 'text/plain; charset=UTF-8'
+  return resp
+
 
 def main():
-  """Starts the web server."""
-  tornado.options.parse_command_line()
+  """Run the server."""
+  global OPTIONS                        # pylint: disable=W0603
+  parser = OptionParser()
+  parser.add_option("-d", "--checkdir", dest="checkdir", metavar="DIR",
+                    default="/usr/lib/nagios/plugins", help="directory with check scripts")
+  parser.add_option("-l", "--log-level", dest="loglevel", metavar="LEVEL",
+                    help="logging level", default='info')
+  parser.add_option("-p", "--port", dest="port", metavar="PORT",
+                    help="port to listen on", default=8111, type="int")
+  OPTIONS = parser.parse_args()[0]
 
-  application = tornado.web.Application([
-    (r"/check/(.+)", CheckHandler),
-    (r"/update/(.+)", UpdateCheckHandler),
-  ], debug = tornado.options.options.debug)
+  levelname = {'debug': logging.DEBUG, 'info': logging.INFO, 'warn': logging.WARN, 'error': logging.ERROR}
+  logging.basicConfig(level=levelname.get(OPTIONS.loglevel.lower(), logging.WARN))
 
-  httpServer = tornado.httpserver.HTTPServer(application)
-  httpServer.listen(8111)
-
-  tornado.ioloop.IOLoop.instance().start()
+  wsgi.server(eventlet.listen(('', int(OPTIONS.port))), APP)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   main()
