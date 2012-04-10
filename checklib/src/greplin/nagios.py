@@ -37,9 +37,9 @@ GLOBAL_CONFIG = threading.local()
 GLOBAL_CONFIG.outfile = sys.stdout
 
 
-def output(msg, *args):
+def output(msg):
   """Send output to output stream."""
-  GLOBAL_CONFIG.outfile.write(msg % args)
+  GLOBAL_CONFIG.outfile.write(msg)
   GLOBAL_CONFIG.outfile.write('\n')
 
 
