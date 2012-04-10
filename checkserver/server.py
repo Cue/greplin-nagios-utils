@@ -44,9 +44,9 @@ def runChecker(fun, name, args):
     fun(args)
   except SystemExit:
     pass
-  except Exception:
+  except Exception, e:
     logging.exception('Checker %s failed', name)
-    return ''
+    return 'CRIT: Checker exception: %s' % e
   return outStream.getvalue()
 
 
@@ -89,11 +89,7 @@ def check(name):
   args = request.args.getlist('arg')
   args.insert(0, 'check_%s' % name)
 
-  output = tpool.execute(checkFun, args)
-  if not output.strip(): # If thread pool is wack, run in main thread. Also, pylint: disable=E1103
-    logging.warn('Thread pool hiccup. Running %s in main thread.', name)
-    output = checkFun(args)
-  resp = make_response(output)
+  resp = make_response(tpool.execute(checkFun, args))
   STATS[name] += 1
 
   resp.headers['Content-Type'] = 'text/plain; charset=UTF-8'
