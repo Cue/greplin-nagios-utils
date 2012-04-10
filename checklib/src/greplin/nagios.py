@@ -19,6 +19,7 @@ import json
 import socket
 import sys
 import time
+import threading
 
 
 UNKNOWN = 3
@@ -30,6 +31,16 @@ WARNING = 1
 OK = 0
 
 STATUS_NAME = ['OK', 'WARN', 'CRIT', 'UNKNOWN']
+
+# This is a thread-local variable so clients can override it per-thread.
+GLOBAL_CONFIG = threading.local()
+GLOBAL_CONFIG.outfile = sys.stdout
+
+
+def output(msg, *args):
+  """Send output to output stream."""
+  GLOBAL_CONFIG.outfile.write(msg % args)
+  GLOBAL_CONFIG.outfile.write('\n')
 
 
 def wgetWithTimeout(host, port, path, timeout, secure = False):
@@ -45,11 +56,11 @@ def wgetWithTimeout(host, port, path, timeout, secure = False):
     return time.time() - start, body
 
   except (socket.gaierror, socket.error):
-    print("CRIT: Could not connect to %s" % host)
+    output("CRIT: Could not connect to %s" % host)
     exit(CRITICAL)
 
   except socket.timeout:
-    print("CRIT: Timed out after %s seconds" % timeout)
+    output("CRIT: Timed out after %s seconds" % timeout)
     exit(CRITICAL)
 
 
@@ -59,7 +70,7 @@ def parseJson(text):
     return json.loads(text)
 
   except ValueError, e:
-    print('CRIT: %s (text was %r)' % (e, text))
+    output('CRIT: %s (text was %r)' % (e, text))
     exit(CRITICAL)
 
 
@@ -69,7 +80,7 @@ def parseJsonFile(filename):
     with open(filename) as f:
       return parseJson(f.read())
   except IOError, e:
-    print('UNKNOWN: %s' % e)
+    output('UNKNOWN: %s' % e)
     exit(UNKNOWN)
 
 
@@ -80,11 +91,7 @@ def lookup(source, *keys, **kw):
     for key in keys:
       source = source[key]
     return source
-  except KeyError:
-    return fallback
-  except AttributeError:
-    return fallback
-  except TypeError:
+  except (KeyError, AttributeError, TypeError):
     return fallback
 
 
@@ -102,7 +109,7 @@ def parseArgs(scriptName, *args, **kw):
   """Parses arguments to the script."""
   argv = kw.get('argv', sys.argv)
   if len(argv) != len(args) + 1:
-    print('USAGE: %s %s' % (scriptName, ' '.join([name for name, _ in args])))
+    output('USAGE: %s %s' % (scriptName, ' '.join([name for name, _ in args])))
     exit(UNKNOWN)
 
   result = {}
@@ -112,7 +119,7 @@ def parseArgs(scriptName, *args, **kw):
       idx += 1
       result[name] = fn(argv[idx])
     except ValueError:
-      print("Invalid value for %s: %r." % (name, argv[1]))
+      output("Invalid value for %s: %r." % (name, argv[1]))
       exit(UNKNOWN)
   return result
 
@@ -298,12 +305,12 @@ class ResponseBuilder(object):
 
   def finish(self):
     """Builds the response, prints it, and exits."""
-    output = STATUS_NAME[self._status]
+    status = STATUS_NAME[self._status]
     messages = self._messages[UNKNOWN] + self._messages[CRITICAL] + self._messages[WARNING] + self._messages[OK]
     if messages:
-      output += ': ' + (', '.join(messages))
+      status += ': ' + (', '.join(messages))
     if self._stats:
-      output += '|' + self.build()
+      status += '|' + self.build()
 
-    print(output)
+    output(status)
     sys.exit(self._status)

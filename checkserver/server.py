@@ -22,11 +22,11 @@ APP = Flask(__name__)
 
 import imp
 import os
-import sys
 import logging
 from optparse import OptionParser
 from collections import defaultdict
 from cStringIO import StringIO
+from greplin.nagios import GLOBAL_CONFIG
 
 # Cache mapping check names to checker modules
 CHECK_CACHE = {}
@@ -39,18 +39,14 @@ STATS = defaultdict(int)
 def runChecker(fun, name, args):
   """Run a checker function with the given args. Return a string."""
   outStream = StringIO()
+  GLOBAL_CONFIG.outfile = outStream
   try:
-    sys.stdout = outStream
-    sys.stderr = outStream
     fun(args)
   except SystemExit:
     pass
   except Exception:
     logging.exception('Checker %s failed', name)
     return ''
-  finally:
-    sys.stdout = sys.__stdout__
-    sys.stderr = sys.__stderr__
   return outStream.getvalue()
 
 
