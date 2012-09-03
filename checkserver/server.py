@@ -104,8 +104,9 @@ def check(name):
     if parsed and parsed[2]:
       for k, v in parsed[2].iteritems():
         if isinstance(v, (int, long, float)):
-          parts = ['checkserver', name, k]
-          parts.extend(args)
+          parts = ['checkserver', name]
+          parts.extend(args[1:])
+          parts.append(k)
           GRAPHITE.enqueue('.'.join(parts), v)
       if not GRAPHITE.isAlive():
         GRAPHITE.start()
