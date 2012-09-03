@@ -26,14 +26,17 @@ import logging
 from optparse import OptionParser
 from collections import defaultdict
 from cStringIO import StringIO
+from eloise import nagios
 from greplin.nagios import GLOBAL_CONFIG
 
 # Cache mapping check names to checker modules
 CHECK_CACHE = {}
-# Argparser options
+# Arg parser options
 OPTIONS = None
 # Stats on how many times each checker has run
 STATS = defaultdict(int)
+# Graphite reporter
+GRAPHITE = None
 
 
 def runChecker(fun, name, args):
@@ -83,13 +86,29 @@ def check(name):
   """Run a check."""
   try:
     checkFun = checker(name)
-  except KeyError:
-    abort(404)
+  except KeyError, e:
+    print e
+    return abort(404)
 
   args = request.args.getlist('arg')
   args.insert(0, 'check_%s' % name)
 
-  resp = make_response(tpool.execute(checkFun, args))
+  output = tpool.execute(checkFun, args)
+  if GRAPHITE:
+    try:
+      parsed = nagios.parseResponse(output)
+    except Exception, e: # ok to catch generic error # pylint: disable=W0703
+      print 'During %s: %r' % (name, e)
+      parsed = None
+
+    if parsed and parsed[2]:
+      for k, v in parsed[2].iteritems():
+        if isinstance(v, (int, long, float)):
+          GRAPHITE.enqueue('checkserver.%s.%s' % (name, k), v)
+      if not GRAPHITE.isAlive():
+        GRAPHITE.start()
+
+  resp = make_response(output)
   STATS[name] += 1
 
   resp.headers['Content-Type'] = 'text/plain; charset=UTF-8'
@@ -98,18 +117,29 @@ def check(name):
 
 def main():
   """Run the server."""
-  global OPTIONS                        # pylint: disable=W0603
+  global OPTIONS # pylint: disable=W0603
   parser = OptionParser()
   parser.add_option("-d", "--checkdir", dest="checkdir", metavar="DIR",
                     default="/usr/lib/nagios/plugins", help="directory with check scripts")
   parser.add_option("-l", "--log-level", dest="loglevel", metavar="LEVEL",
                     help="logging level", default='info')
+  parser.add_option("-g", "--graphite", dest="graphite", metavar="GRAPHITE_HOST",
+                    help="graphite host, specify as host:post", default='')
   parser.add_option("-p", "--port", dest="port", metavar="PORT",
                     help="port to listen on", default=8111, type="int")
   OPTIONS = parser.parse_args()[0]
 
-  levelname = {'debug': logging.DEBUG, 'info': logging.INFO, 'warn': logging.WARN, 'error': logging.ERROR}
-  logging.basicConfig(level=levelname.get(OPTIONS.loglevel.lower(), logging.WARN))
+  levelName = {'debug': logging.DEBUG, 'info': logging.INFO, 'warn': logging.WARN, 'error': logging.ERROR}
+  logging.basicConfig(level=levelName.get(OPTIONS.loglevel.lower(), logging.WARN))
+
+  if OPTIONS.graphite:
+    from greplin.scales import util
+
+    host, port = OPTIONS.graphite.split(':')
+
+    global GRAPHITE # pylint: disable=W0603
+    GRAPHITE = util.GraphiteReporter(host, int(port))
+    GRAPHITE.start()
 
   wsgi.server(eventlet.listen(('', int(OPTIONS.port))), APP)
 
