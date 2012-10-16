@@ -25,7 +25,7 @@ setup(name='greplin-nagios-checklib',
       description='Python utilties for creating Nagios checks.',
       license='Apache',
       author='Greplin, Inc.',
-      url='http://www.github.com/Greplin/greplin-nagios-utils/checklib',
+      url='https://www.github.com/Cue/greplin-nagios-utils/checklib',
       package_dir = {'':'src'},
       packages = [
         'greplin',

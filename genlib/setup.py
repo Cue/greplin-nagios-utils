@@ -25,7 +25,7 @@ setup(name='greplin-nagios-genlib',
       description='Python utilties for creating Nagios configurations.',
       license='Apache',
       author='Greplin, Inc.',
-      url='http://www.github.com/Greplin/greplin-nagios-utils/genlib',
+      url='https://www.github.com/Cue/greplin-nagios-utils/genlib',
       package_dir = {'':'src'},
       packages = [
         'greplin',
